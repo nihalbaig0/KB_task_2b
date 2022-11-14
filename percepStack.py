@@ -33,7 +33,7 @@ from std_msgs.msg import String
 import numpy as np
 # You can add more if required
 ##############################################################
-
+import math
 
 # Initialize Global variables
 
@@ -41,6 +41,7 @@ bridge = CvBridge()
 
 global pose2
 pose2= []
+global zer 
 ################# ADD UTILITY FUNCTIONS HERE #################
 def shape_color_centroid(th):
     
@@ -93,7 +94,7 @@ def img_clbck(img_msg):
     -----
     img_msg: Callback message.
     '''
-    global pub_rgb ,bridge#, add global variable if any
+    global pub_rgb ,bridge, zer#, add global variable if any
 
     ############################### Add your code here #######################################
     try:
@@ -101,7 +102,9 @@ def img_clbck(img_msg):
     except CvBridgeError as e:
         print(e)
 
-    print(image.shape)
+    #print(image.shape)
+    # zer = np.zeros_like(image)
+    # print(zer)
     ##########################################################################################
     pose = image_processing(image)
     pub_rgb.publish(str(pose))
@@ -123,22 +126,62 @@ def depth_clbck(depth_msg):
     -----
     depth_msg: Callback message.
     '''
-    global pub_depth
+    global pub_depth , zer 
     depth_image = bridge.imgmsg_to_cv2(depth_msg, "32FC1")
     #print(depth_image.shape)
     x=0
     y=0
     depth_val = []
     if len(pose2)>0:
-        y , x = pose2[0][0] , pose2[0][1]
-    y = int(y * 0.6667)
-    x = int(x* 0.6625)
-    #print(pose2)
-   
-    
+        #y , x = pose2[0][0] , pose2[0][1]
+    # y = int(y * 0.6667)
+    # x = int(x* 0.6625)
+    # print(depth_image[y][x])
+        for y, x in pose2:
+            K = np.array([476.7030836014194, 0.0, 400.5, 0.0, 476.7030836014194, 400.5, 0.0, 0.0, 1.0])
+            m_fx = K[0]
+            m_fy = K[4]
+            m_cx = K[2]
+            m_cy = K[5]
+            inv_fx = 1. / m_fx
+            inv_fy = 1. / m_fy
+            depth_array = np.array(depth_image, dtype=np.float32)
+            cv2.normalize(depth_array, depth_array, 0, 1, cv2.NORM_MINMAX)
+            depth_8 = (depth_array * 255).round().astype(np.uint8)
+            cv_depth = np.zeros((480,848,3),dtype=np.uint8)
+            #print(cv_depth)
+            cv_depth[:,:,0] = depth_8
+            cv_depth[:,:,1] = depth_8
+            cv_depth[:,:,2] = depth_8
+            
+                
+            n = 0
+            sum = 0
+            for i in range(0,depth_image.shape[0]):
+                for j in range(0,depth_image.shape[1]):
+                    value = depth_image.item(i, j)
+                    if value > 0.:
+                        n = n + 1
+                        sum = sum + value
+                
+            mean_z = sum / n
+                
+            point_z = mean_z * 0.001; # distance in meters
+            point_x = (x - m_cx) * point_z * inv_fx;
+            point_y = (y - m_cy) * point_z * inv_fy;
+                
+            #print("here")
+                        
+        
+                        
+            dist = math.sqrt(point_x * point_x + point_y * point_y + point_z * point_z)
+            #print(dist)
+            g = float("{:.1f}".format(dist))
+            depth_val.append(g)
     ############################### Add your code here #######################################
-    print(depth_image[y][x])
+    #print("distance" + str(dist))
     ##########################################################################################
+    print(depth_val)
     pub_depth.publish(str(depth_val))
 
 
@@ -175,10 +218,17 @@ def image_processing(image):
 
     # Blue color in BGR
     color = (255, 0, 0)
-
+    width = 848
+    height = 480
+    dim = (width, height)
+    resized_image = cv2.resize(image, dim, interpolation = cv2.INTER_AREA)
+    #print(resized_image.shape)
     # Line thickness of 2 px
     thickness = 2
-    imgHSV = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+    imgHSV = cv2.cvtColor(resized_image, cv2.COLOR_BGR2HSV)
+    # cv2.imshow("resized",resized_image)
+    # cv2.waitKey(0)
+   
     for idx , (lower, upper) in enumerate(boundaries):
             # create NumPy arrays from the boundaries
             lower = np.array(lower, dtype = "uint8")
@@ -186,12 +236,17 @@ def image_processing(image):
             # find the colors within the specified boundaries and apply the mask
             mask = cv2.inRange(imgHSV, lower, upper)
             #print(shape_color_centroid(mask))
-            pose.append(shape_color_centroid(mask))
-            center_coordinates = tuple(shape_color_centroid(mask)[0])
-            image = cv2.circle(image, center_coordinates, radius, color, thickness)
-            #cv2.imshow(str(idx),image)
+            #pose.append(shape_color_centroid(mask))
+            if len(shape_color_centroid(mask)) > 0:
+                pose.append(shape_color_centroid(mask))
+                center_coordinates = tuple(shape_color_centroid(mask)[0])
+            
+                #image = cv2.circle(resized_image, center_coordinates, radius, color, thickness)
+                #cv2.imshow(str(idx),resized_image)
     #cv2.waitKey(0)
     pose2 = flatten(pose)
+    print(pose2)
+    pose = flatten(pose)
     ##########################################################################################
     return pose
 
@@ -214,16 +269,30 @@ def main():
     #### EDIT YOUR CODE HERE FOR SUBSCRIBING TO OTHER TOPICS AND TO APPLY YOUR ALGORITHM TO PUBLISH #####
     global pub_rgb, pub_depth
     rospy.init_node("percepStack", anonymous=True)
+    # for i in range(1,4):
+    #     print(i)
+    #     sub_image_color_1 = rospy.Subscriber(f"/device_0/sensor_1/Color_0/image/data_{i}", Image, img_clbck)
+    #     sub_image_depth_1 = rospy.Subscriber(f"/device_0/sensor_0/Depth_0/image/data_{i}", Image, depth_clbck)
+
+
+        
     sub_image_color_1 = rospy.Subscriber("/device_0/sensor_1/Color_0/image/data_1", Image, img_clbck)
     sub_image_depth_1 = rospy.Subscriber("/device_0/sensor_0/Depth_0/image/data_1", Image, depth_clbck)
-
-
     pub_rgb = rospy.Publisher('/center_rgb', String, queue_size = 1)
     pub_depth = rospy.Publisher('/center_depth', String, queue_size = 1)
 
-    ####################################################################################################
-    rospy.spin()
+    sub_image_color_1 = rospy.Subscriber("/device_0/sensor_1/Color_0/image/data_2", Image, img_clbck)
+    sub_image_depth_1 = rospy.Subscriber("/device_0/sensor_0/Depth_0/image/data_2", Image, depth_clbck)
+    pub_rgb = rospy.Publisher('/center_rgb', String, queue_size = 1)
+    pub_depth = rospy.Publisher('/center_depth', String, queue_size = 1)
 
+    sub_image_color_1 = rospy.Subscriber("/device_0/sensor_1/Color_0/image/data_3", Image, img_clbck)
+    sub_image_depth_1 = rospy.Subscriber("/device_0/sensor_0/Depth_0/image/data_3", Image, depth_clbck)
+    pub_rgb = rospy.Publisher('/center_rgb', String, queue_size = 1)
+    pub_depth = rospy.Publisher('/center_depth', String, queue_size = 1)
+
+        ####################################################################################################
+    rospy.spin()
 if __name__ == '__main__':
     try:
         main()
