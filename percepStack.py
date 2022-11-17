@@ -44,8 +44,8 @@ bridge = CvBridge()
 global pose2
 pose2= []
 global zer 
-global a
-a = None
+# global a
+# a = None
 ################# ADD UTILITY FUNCTIONS HERE #################
 def shape_color_centroid(th):
     
@@ -129,7 +129,7 @@ def img_clbck(img_msg):
     ##########################################################################################
     pose = image_processing(image)
     
-    # pub_rgb.publish(str(pose))
+    pub_rgb.publish(str(pose))
     print(pose)
     rospy.sleep(1)
 
@@ -203,6 +203,7 @@ def depth_clbck(depth_msg):
             g = float("{:.1f}".format(dist))
             depth_val.append(g)
         print(depth_val)
+        pub_depth.publish(str(depth_val))
         # pose2 = 0
         rospy.sleep(1)
         # rospy.sleep(1)
@@ -307,6 +308,8 @@ def main():
     #### EDIT YOUR CODE HERE FOR SUBSCRIBING TO OTHER TOPICS AND TO APPLY YOUR ALGORITHM TO PUBLISH #####
     global pub_rgb, pub_depth
     rospy.init_node("percepStack", anonymous=True)
+    pub_rgb = rospy.Publisher('/center_rgb', String, queue_size = 1)
+    pub_depth = rospy.Publisher('/center_depth', String, queue_size = 1)
     while not rospy.is_shutdown():    
         # print(f'Image no. {i}')
         print("image 1")
@@ -344,7 +347,7 @@ def main():
         # rospy.Subscriber("/device_0/sensor_0/Depth_0/image/data_2", Image, depth_clbck)
         # pub_rgb = rospy.Publisher('/center_rgb', String, queue_size = 1)
         # pub_depth = rospy.Publisher('/center_depth', String, queue_size = 1)
-        # rospy.sleep(1)
+        # # rospy.sleep(1)
         # rospy.Subscriber("/device_0/sensor_1/Color_0/image/data_3", Image, img_clbck)
         # rospy.Subscriber("/device_0/sensor_0/Depth_0/image/data_3", Image, depth_clbck)
         # pub_rgb = rospy.Publisher('/center_rgb', String, queue_size = 1)
