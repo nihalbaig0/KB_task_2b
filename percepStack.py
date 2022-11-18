@@ -17,10 +17,10 @@
 *****************************************************************************************
 '''
 
-# Team ID:			[ Team-ID ]
-# Author List:		[ Names of team members worked on this file separated by Comma: Name1, Name2, ... ]
+# Team ID:			[ KB_1842 ]
+# Author List:		[ Nihal Baig , Ad-Deen Mahbub ]
 # Filename:			percepStack.py
-# Functions:		
+# Functions:		shape_color_centroid , flatten , img_clbck , depth_clbck , image_processing
 # 					[ Comma separated list of functions in this file ]
 
 
@@ -28,11 +28,12 @@
 import cv2 
 from matplotlib import pyplot as plt
 import rospy
-from cv_bridge import CvBridge, CvBridgeError
+from std_msgs.msg import Int16MultiArray , Float32MultiArray 
+from cv_bridge import CvBridge, CvBridgeError 
 from sensor_msgs.msg import Image
-from std_msgs.msg import String
+# from std_msgs.msg import String
 import numpy as np
-import matplotlib.image as mpimg
+# import matplotlib.image as mpimg
 # You can add more if required
 ##############################################################
 import math
@@ -44,6 +45,9 @@ bridge = CvBridge()
 global pose2
 pose2= []
 global zer 
+global float_msg,int_msg
+float_msg = Float32MultiArray()
+int_msg = Int16MultiArray()
 # global a
 # a = None
 ################# ADD UTILITY FUNCTIONS HERE #################
@@ -128,8 +132,12 @@ def img_clbck(img_msg):
     # print(zer)
     ##########################################################################################
     pose = image_processing(image)
-    
-    pub_rgb.publish(str(pose))
+    # for i in len(pose):
+    #     for j in len(pose[i]):
+    #         pose[i][j] = int(pose[i][j])
+    int_msg.data = pose
+    # int_msg.serialize('5')
+    pub_rgb.publish(int_msg)
     print(pose)
     rospy.sleep(1)
 
@@ -202,8 +210,11 @@ def depth_clbck(depth_msg):
             #print(dist)
             g = float("{:.1f}".format(dist))
             depth_val.append(g)
+        
         print(depth_val)
-        pub_depth.publish(str(depth_val))
+
+        float_msg.data = depth_val
+        pub_depth.publish(float_msg)
         # pose2 = 0
         rospy.sleep(1)
         # rospy.sleep(1)
@@ -308,29 +319,29 @@ def main():
     #### EDIT YOUR CODE HERE FOR SUBSCRIBING TO OTHER TOPICS AND TO APPLY YOUR ALGORITHM TO PUBLISH #####
     global pub_rgb, pub_depth
     rospy.init_node("percepStack", anonymous=True)
-    pub_rgb = rospy.Publisher('/center_rgb', String, queue_size = 1)
-    pub_depth = rospy.Publisher('/center_depth', String, queue_size = 1)
+    pub_rgb = rospy.Publisher('/center_rgb', Int16MultiArray, queue_size = 1)
+    pub_depth = rospy.Publisher('/center_depth', Float32MultiArray, queue_size = 1)
     while not rospy.is_shutdown():    
         # print(f'Image no. {i}')
         print("image 1")
-        sub_image = rospy.Subscriber(f"/device_0/sensor_1/Color_0/image/data_1", Image, img_clbck)
+        sub_image = rospy.Subscriber(f"/device_0/sensor_1/Color_0/image/data_1",Image, img_clbck)
         rospy.sleep(1.16)
         sub_image.unregister()
-        sub_depth = rospy.Subscriber(f"/device_0/sensor_0/Depth_0/image/data_1", Image, depth_clbck)
+        sub_depth = rospy.Subscriber(f"/device_0/sensor_0/Depth_0/image/data_1",Image, depth_clbck)
         rospy.sleep(1)
         sub_depth.unregister()
         print("image 2")
-        sub_image = rospy.Subscriber(f"/device_0/sensor_1/Color_0/image/data_2", Image, img_clbck)
+        sub_image = rospy.Subscriber(f"/device_0/sensor_1/Color_0/image/data_2",Image, img_clbck)
         rospy.sleep(1)
         sub_image.unregister()
-        sub_depth = rospy.Subscriber(f"/device_0/sensor_0/Depth_0/image/data_2", Image, depth_clbck)
+        sub_depth = rospy.Subscriber(f"/device_0/sensor_0/Depth_0/image/data_2",Image, depth_clbck)
         rospy.sleep(1)
         sub_depth.unregister()
         print("image 3")
-        sub_image = rospy.Subscriber(f"/device_0/sensor_1/Color_0/image/data_3", Image, img_clbck)
+        sub_image = rospy.Subscriber(f"/device_0/sensor_1/Color_0/image/data_3",Image, img_clbck)
         rospy.sleep(1)
         sub_image.unregister()
-        sub_depth = rospy.Subscriber(f"/device_0/sensor_0/Depth_0/image/data_3", Image, depth_clbck)
+        sub_depth = rospy.Subscriber(f"/device_0/sensor_0/Depth_0/image/data_3",Image, depth_clbck)
         rospy.sleep(1)
         sub_depth.unregister()
         
